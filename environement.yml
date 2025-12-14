@@ -11,7 +11,9 @@ dependencies:
   - torchaudio
   - pandas
   - numpy
+  - scikit-learn
   - matplotlib
+  - seaborn
   - transformers
   - fastapi
   - uvicorn
