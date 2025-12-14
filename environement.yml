@@ -1,0 +1,17 @@
+name: emotion_classification
+
+channels:
+  - conda-forge
+  - pytorch
+
+dependencies:
+  - python=3.11
+  - pytorch
+  - torchvision
+  - torchaudio
+  - pandas
+  - numpy
+  - matplotlib
+  - transformers
+  - fastapi
+  - uvicorn
