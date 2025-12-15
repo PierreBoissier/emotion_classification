@@ -1,2 +1,5 @@
 .idea/
 .DS_Store
+data/train_df.csv
+data/val_df.csv
+data/test_df.csv
