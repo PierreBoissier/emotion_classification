@@ -1,4 +1,3 @@
-# https://datascientistsdiary.com/fine-tuning-bert-for-text-classification/
 # surcouche lightning de PyTorch pour l'entrainement
 
 import pandas as pd
@@ -25,21 +24,23 @@ import shutil
 
 from torch.cuda.amp import autocast, GradScaler
 
-#from development import data_path
+from data import data_path, id2label
+from models import models_path
 from scripts.dataset_builder import DatasetBuilder
+
 
 
 class BertClassifier:
     def __init__(self, model_name_or_path, batch_size, mps, load_trained_model):
-        self.train_df = pd.read_csv(os.path.join(data_path,'./training-classifier-data', 'training_sentences.csv'))
-        self.val_df = pd.read_csv(os.path.join(data_path,'./training-classifier-data', 'validation_sentences.csv'))
-        self.test_df = pd.read_csv(os.path.join(data_path,'./training-classifier-data', 'test_sentences.csv'))
+        self.train_df = pd.read_csv(os.path.join(data_path,'train_df.csv'))
+        self.val_df = pd.read_csv(os.path.join(data_path,'val_df.csv'))
+        self.test_df = pd.read_csv(os.path.join(data_path,'test_df.csv'))
 
-        self.all_labels = DatasetBuilder.get_all_labels(self.train_df)
-        self.id2label = {i: l for i, l in enumerate(self.all_labels)}
+        #self.all_labels = DatasetBuilder.get_all_labels(self.train_df)
+        self.id2label = id2label
         self.label2id = {l: i for i, l in self.id2label.items()}
-        with open(os.path.join(data_path,'./training-classifier-data', 'label2id.pkl'), 'wb') as f:
-            pickle.dump(self.label2id, f)
+        #with open(os.path.join(data_path,'./training-classifier-data', 'label2id.pkl'), 'wb') as f:
+        #    pickle.dump(self.label2id, f)
 
         self.model_name_or_path = model_name_or_path
         self.batch_size = batch_size
@@ -50,7 +51,7 @@ class BertClassifier:
         self.device = torch.device("cuda" if cuda_available else "mps" if (mps_available & mps) else "cpu")
         print(f"Device: {self.device}")
 
-        self.save_dir = f"./BERT-classifier/{os.path.basename(self.model_name_or_path)}"
+        self.save_dir = os.path.join(models_path, os.path.basename(self.model_name_or_path))
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
         if load_trained_model:
             self.model = AutoModelForSequenceClassification.from_pretrained(self.save_dir).to(self.device)
@@ -80,7 +81,7 @@ class BertClassifier:
 
     def train_with_trainer(self, epochs, lr, weight_decay, metric):
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path,
-                                                                        num_labels=len(self.all_labels),
+                                                                        num_labels=len(self.id2label),
                                                                         id2label=self.id2label,
                                                                         label2id=self.label2id).to(self.device)
 
@@ -124,7 +125,7 @@ class BertClassifier:
         writer = SummaryWriter(log_dir="logs")
 
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path,
-                                                                        num_labels=len(self.all_labels),
+                                                                        num_labels=len(self.id2label),
                                                                         id2label=self.id2label,
                                                                         label2id=self.label2id).to(self.device)
         print(self.model)
@@ -252,7 +253,7 @@ class BertClassifier:
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(batch["labels"].cpu().numpy())
 
-        print(classification_report(all_labels, all_preds, digits=3, target_names=self.all_labels))
+        print(classification_report(all_labels, all_preds, digits=3, target_names=self.id2label.values()))
         print(confusion_matrix(all_labels, all_preds, labels=sorted(self.id2label.keys())))
 
     def plot_training_curve(self, train_losses, val_accuracies):
