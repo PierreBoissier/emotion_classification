@@ -1,3 +1,4 @@
 import os
 
-models_path = os.getcwd()
+path = os.getcwd()
+models_path = path + "/models/"

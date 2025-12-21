@@ -1,6 +1,7 @@
 import os
 
-data_path = os.getcwd()
+path = os.getcwd()
+data_path = path + "/data/"
 
 id2label = {
     0 : "sadness",
