@@ -1,8 +1,13 @@
 import pandas as pd
 import os
 from torch.utils.data import DataLoader
-from scripts.dataset_builder import DatasetBuilder
+from dataset_builder import DatasetBuilder
 from config import data_path, model_config
+
+# Use this import modification in Colab
+#from emotion_classification.scripts.dataset_builder import DatasetBuilder
+#from emotion_classification.scripts.config import data_path, model_config
+
 
 def load_data(df_name='train_df.csv'):
     return pd.read_csv(os.path.join(data_path, df_name))

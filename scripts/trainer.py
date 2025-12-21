@@ -17,7 +17,11 @@ import os
 import matplotlib.pyplot as plt
 
 from config import models_path, id2label, label2id
-from scripts.data_loader import *
+from data_loader import *
+
+# Use this import modification in Colab
+#from emotion_classification.scripts.config import models_path, id2label, label2id
+#from emotion_classification.scripts.data_loader import *
 
 class BertClassifier:
     def __init__(self, model_name_or_path, batch_size, mps, load_trained_model):

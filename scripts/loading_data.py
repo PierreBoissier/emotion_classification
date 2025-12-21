@@ -1,4 +1,11 @@
 import pandas as pd
+import os
+
+path = os.getcwd()
+data_path = path + '/data/'
+
+# On Colab use this path
+#data_path = path + "/emotion_classification/data"
 
 def main():
 
@@ -8,13 +15,13 @@ def main():
               'test': 'split/test-00000-of-00001.parquet'}
 
     train_df = pd.read_parquet("hf://datasets/dair-ai/emotion/" + splits["train"])
-    train_df.to_csv("/Users/pierre/emotion_classification/data/train_df.csv", index=False)
+    train_df.to_csv(os.path.join(data_path,"train_df.csv"), index=False)
 
     val_df = pd.read_parquet("hf://datasets/dair-ai/emotion/" + splits["validation"])
-    val_df.to_csv("/Users/pierre/emotion_classification/data/val_df.csv", index=False)
+    val_df.to_csv(os.path.join(data_path,"val_df.csv"), index=False)
 
     test_df = pd.read_parquet("hf://datasets/dair-ai/emotion/" + splits["test"])
-    test_df.to_csv("/Users/pierre/emotion_classification/data/test_df.csv", index=False)
+    test_df.to_csv(os.path.join(data_path,"test_df.csv"), index=False)
 
 
 if __name__ == "__main__":
