@@ -1,3 +1,5 @@
+.gitignore
+conf
 .idea/
 .DS_Store
 data/train_df.csv
