@@ -16,7 +16,7 @@ import platform
 import os
 import matplotlib.pyplot as plt
 
-from config import models_path, id2label, label2id, model_config
+from config import models_path, id2label, label2id
 from scripts.data_loader import *
 
 class BertClassifier:
