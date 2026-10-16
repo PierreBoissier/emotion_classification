@@ -1,36 +1,31 @@
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-import platform
+
+from .device import select_device
+
+MAX_LENGTH = 256     # Same truncation length as in training
 
 class BertClassifierInference:
     def __init__(self, model_path):
         self.model_path = model_path
-        self.device = self._set_device()
+        self.device = select_device()
         self.model, self.tokenizer = self._load_model_and_tokenizer()
-
-    def _set_device(self):
-        cuda_available = torch.cuda.is_available()
-        mps_available = hasattr(torch.backends, "mps") and torch.backends.mps.is_available() and \
-                        platform.processor() in {"arm", "arm64"}
-        device = torch.device("cuda" if cuda_available else "mps" if mps_available else "cpu")
-        print(f"Device: {device}")
-        return device
 
     def _load_model_and_tokenizer(self):
         model = AutoModelForSequenceClassification.from_pretrained(self.model_path).to(self.device)
+        model.eval()
         tokenizer = AutoTokenizer.from_pretrained(self.model_path)
         return model, tokenizer
 
+    def _logits(self, text):
+        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=MAX_LENGTH).to(self.device)
+        with torch.no_grad():
+            return self.model(**inputs).logits
+
     def predict(self, text):
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-        outputs = self.model(**inputs)
-        logits = outputs.logits
-        preds = torch.argmax(logits, dim=1)
+        preds = torch.argmax(self._logits(text), dim=1)
         return preds.item()
 
     def predict_proba(self, text):
-        inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-        outputs = self.model(**inputs)
-        probs = torch.nn.functional.softmax(outputs.logits, dim=-1)
-        return probs.cpu().detach().numpy()
-
+        probs = torch.nn.functional.softmax(self._logits(text), dim=-1)
+        return probs.cpu().numpy()

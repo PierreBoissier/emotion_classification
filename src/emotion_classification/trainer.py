@@ -13,12 +13,12 @@ import shutil
 import time
 from tqdm import tqdm
 
-import platform
 import os
 import matplotlib.pyplot as plt
 
 from .config import models_path, data_path, id2label, label2id
 from .data_loader import create_dataloaders
+from .device import select_device
 
 class BertClassifier:
     def __init__(self, model_name_or_path, batch_size, mps, load_trained_model,
@@ -29,19 +29,14 @@ class BertClassifier:
         self.load_trained_model = load_trained_model
         self.id2label = id2label
         self.label2id = label2id
-        self.device = self._set_device()
+        self.device = select_device(allow_mps=self.mps)
         self.data_dir = data_dir
         self.save_dir = output_dir or os.path.join(models_path, os.path.basename(self.model_name_or_path))
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
         self.model = self._initialize_model()
 
-    def _set_device(self):
-        cuda_available = torch.cuda.is_available()
-        mps_available = hasattr(torch.backends, "mps") and torch.backends.mps.is_available() and \
-                        platform.processor() in {"arm", "arm64"}
-        device = torch.device("cuda" if cuda_available else "mps" if (mps_available & self.mps) else "cpu")
-        print(f"Device: {device}")
-        return device
+    def _create_dataloaders(self, **kwargs):
+        return create_dataloaders(batch_size=self.batch_size, data_dir=self.data_dir, tokenizer=self.tokenizer, **kwargs)
 
     def _initialize_model(self):
         if self.load_trained_model:
@@ -72,8 +67,7 @@ class BertClassifier:
                                                                         id2label=self.id2label,
                                                                         label2id=self.label2id).to(self.device)
 
-        train_dataset, val_dataset, _ = create_dataloaders(batch_size=self.batch_size, return_dataset=True, evaluation=False,
-                                                              data_dir=self.data_dir, model_name_or_path=self.model_name_or_path)
+        train_dataset, val_dataset, _ = self._create_dataloaders(return_dataset=True, evaluation=False)
 
         training_args = TrainingArguments(output_dir=self.save_dir,
                                           learning_rate=lr,
@@ -116,8 +110,7 @@ class BertClassifier:
                                                                         id2label=self.id2label,
                                                                         label2id=self.label2id).to(self.device)
 
-        train_dataloader, val_dataloader, _ = create_dataloaders(batch_size=self.batch_size, return_dataset=False, evaluation=False,
-                                                                       data_dir=self.data_dir, model_name_or_path=self.model_name_or_path)
+        train_dataloader, val_dataloader, _ = self._create_dataloaders(return_dataset=False, evaluation=False)
 
         optimizer = AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
         total_steps = len(train_dataloader) * num_epochs
@@ -224,8 +217,13 @@ class BertClassifier:
         self.plot_training_curve(train_losses, val_accuracies)
 
     def evaluate(self):
-        _, _, test_dataloader = create_dataloaders(batch_size=self.batch_size, return_dataset=False, evaluation=True,
-                                                    data_dir=self.data_dir, model_name_or_path=self.model_name_or_path)
+        all_labels, all_preds = self._predict_test_split()
+        metrics, matrix = self._compute_evaluation(all_labels, all_preds)
+        self._save_evaluation(metrics, matrix)
+        return metrics
+
+    def _predict_test_split(self):
+        _, _, test_dataloader = self._create_dataloaders(return_dataset=False, evaluation=True)
         self.model.eval()
         all_preds = []
         all_labels = []
@@ -239,25 +237,29 @@ class BertClassifier:
 
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(batch["labels"].cpu().numpy())
+        return all_labels, all_preds
 
+    def _compute_evaluation(self, all_labels, all_preds):
         label_ids = sorted(self.id2label.keys())
         emotions = [self.id2label[i] for i in label_ids]
         report = classification_report(all_labels, all_preds, labels=label_ids, target_names=emotions,
                                        output_dict=True, zero_division=0)
-        print(classification_report(all_labels, all_preds, digits=3, labels=label_ids, target_names=emotions, zero_division=0))
         matrix = confusion_matrix(all_labels, all_preds, labels=label_ids)
-        print(matrix)
         metrics = {
             "accuracy": accuracy_score(all_labels, all_preds),
             "macro_f1": f1_score(all_labels, all_preds, labels=label_ids, average="macro", zero_division=0),
             "per_emotion": {emotion: report[emotion] for emotion in emotions},
             "confusion_matrix": matrix.tolist(),
         }
+        print(classification_report(all_labels, all_preds, digits=3, labels=label_ids, target_names=emotions, zero_division=0))
+        print(matrix)
+        return metrics, matrix
+
+    def _save_evaluation(self, metrics, matrix):
         os.makedirs(self.save_dir, exist_ok=True)
         with open(os.path.join(self.save_dir, "metrics.json"), "w") as f:
             json.dump(metrics, f, indent=2)
-        self.plot_confusion_matrix(matrix, emotions)
-        return metrics
+        self.plot_confusion_matrix(matrix, [self.id2label[i] for i in sorted(self.id2label)])
 
     def plot_confusion_matrix(self, matrix, emotions):
         fig, ax = plt.subplots(figsize=(6, 5))
