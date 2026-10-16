@@ -1,11 +1,12 @@
 import json
+from pathlib import Path
 
 import pytest
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from emotion_classification.config import id2label
-from emotion_classification.main import main
+from emotion_classification.main import evaluate_checkpoint, main
 
 from .conftest import TINY_CONFIG
 
@@ -35,3 +36,18 @@ def test_training_run_produces_reloadable_checkpoint_and_evaluation_files(
     assert len(metrics["confusion_matrix"]) == len(id2label)
     assert set(metrics["per_emotion"]) == set(id2label.values())
     assert (output_dir / "confusion_matrix.png").stat().st_size > 0
+
+
+def test_evaluating_a_checkpoint_writes_results_without_modifying_it(
+        trained_checkpoint, tiny_data_dir, tmp_path):
+    results_dir = tmp_path / "results"
+    weights = Path(trained_checkpoint) / "model.safetensors"
+    weights_before = weights.read_bytes()
+
+    metrics = evaluate_checkpoint(trained_checkpoint, data_dir=tiny_data_dir,
+                                  results_dir=str(results_dir), config=TINY_CONFIG)
+
+    assert json.loads((results_dir / "metrics.json").read_text()) == metrics
+    assert set(metrics["per_emotion"]) == set(id2label.values())
+    assert (results_dir / "confusion_matrix.png").stat().st_size > 0
+    assert weights.read_bytes() == weights_before

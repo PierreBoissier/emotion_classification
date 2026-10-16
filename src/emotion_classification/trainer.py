@@ -216,10 +216,11 @@ class BertClassifier:
 
         self.plot_training_curve(train_losses, val_accuracies)
 
-    def evaluate(self):
+    def evaluate(self, results_dir=None):
+        """Evaluate on the test Split; results go to `results_dir` (default: the Checkpoint directory)."""
         all_labels, all_preds = self._predict_test_split()
         metrics, matrix = self._compute_evaluation(all_labels, all_preds)
-        self._save_evaluation(metrics, matrix)
+        self._save_evaluation(metrics, matrix, results_dir or self.save_dir)
         return metrics
 
     def _predict_test_split(self):
@@ -255,13 +256,13 @@ class BertClassifier:
         print(matrix)
         return metrics, matrix
 
-    def _save_evaluation(self, metrics, matrix):
-        os.makedirs(self.save_dir, exist_ok=True)
-        with open(os.path.join(self.save_dir, "metrics.json"), "w") as f:
+    def _save_evaluation(self, metrics, matrix, results_dir):
+        os.makedirs(results_dir, exist_ok=True)
+        with open(os.path.join(results_dir, "metrics.json"), "w") as f:
             json.dump(metrics, f, indent=2)
-        self.plot_confusion_matrix(matrix, [self.id2label[i] for i in sorted(self.id2label)])
+        self.plot_confusion_matrix(matrix, [self.id2label[i] for i in sorted(self.id2label)], results_dir)
 
-    def plot_confusion_matrix(self, matrix, emotions):
+    def plot_confusion_matrix(self, matrix, emotions, results_dir):
         fig, ax = plt.subplots(figsize=(6, 5))
         image = ax.imshow(matrix, cmap="Blues")
         ax.set_xticks(range(len(emotions)), labels=emotions, rotation=45, ha="right")
@@ -273,7 +274,7 @@ class BertClassifier:
                 ax.text(j, i, matrix[i, j], ha="center", va="center")
         fig.colorbar(image)
         fig.tight_layout()
-        fig.savefig(os.path.join(self.save_dir, "confusion_matrix.png"))
+        fig.savefig(os.path.join(results_dir, "confusion_matrix.png"))
         plt.close(fig)
 
     def plot_training_curve(self, train_losses, val_accuracies):
