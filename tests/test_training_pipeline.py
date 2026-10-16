@@ -46,7 +46,7 @@ def test_training_run_produces_reloadable_checkpoint_and_evaluation_files(
         tiny_model_dir, tiny_data_dir, tmp_path):
     output_dir = tmp_path / "checkpoint"
 
-    main(config={"model_name_or_path": tiny_model_dir, "batch_size": 2, "num_epochs": 1,
+    returned = main(config={"model_name_or_path": tiny_model_dir, "batch_size": 2, "num_epochs": 1,
                  "mps": False, "load_trained_model": False},
          data_dir=tiny_data_dir, output_dir=str(output_dir))
 
@@ -60,7 +60,10 @@ def test_training_run_produces_reloadable_checkpoint_and_evaluation_files(
 
     # Metrics and confusion matrix are saved as files
     metrics = json.loads((output_dir / "metrics.json").read_text())
+    assert returned == metrics
     assert 0.0 <= metrics["accuracy"] <= 1.0
-    assert 0.0 <= metrics["macro_f1"] <= 1.0
+    assert metrics["macro_f1"] == pytest.approx(
+        sum(m["f1-score"] for m in metrics["per_emotion"].values()) / len(id2label))
+    assert len(metrics["confusion_matrix"]) == len(id2label)
     assert set(metrics["per_emotion"]) == set(id2label.values())
     assert (output_dir / "confusion_matrix.png").stat().st_size > 0

@@ -242,15 +242,14 @@ class BertClassifier:
 
         label_ids = sorted(self.id2label.keys())
         emotions = [self.id2label[i] for i in label_ids]
+        report = classification_report(all_labels, all_preds, labels=label_ids, target_names=emotions,
+                                       output_dict=True, zero_division=0)
         print(classification_report(all_labels, all_preds, digits=3, labels=label_ids, target_names=emotions, zero_division=0))
         matrix = confusion_matrix(all_labels, all_preds, labels=label_ids)
         print(matrix)
-
-        report = classification_report(all_labels, all_preds, labels=label_ids, target_names=emotions,
-                                       output_dict=True, zero_division=0)
         metrics = {
             "accuracy": accuracy_score(all_labels, all_preds),
-            "macro_f1": f1_score(all_labels, all_preds, average="macro"),
+            "macro_f1": f1_score(all_labels, all_preds, labels=label_ids, average="macro", zero_division=0),
             "per_emotion": {emotion: report[emotion] for emotion in emotions},
             "confusion_matrix": matrix.tolist(),
         }
