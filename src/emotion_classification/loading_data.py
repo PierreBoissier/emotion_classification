@@ -1,13 +1,11 @@
 import pandas as pd
 import os
 
-path = os.getcwd()
-data_path = path + '/data/'
-
-# On Colab use this path
-#data_path = path + "/emotion_classification/data"
+from .config import data_path
 
 def main():
+
+    os.makedirs(data_path, exist_ok=True)
 
     # Loading and saving data from Hugging face datasets
     splits = {'train': 'split/train-00000-of-00001.parquet',

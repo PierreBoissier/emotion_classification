@@ -1,9 +1,5 @@
-from config import model_config
-from trainer import BertClassifier
-
-# Use this importation in Colab
-#from emotion_classification.scripts.config import model_config
-#from emotion_classification.scripts.trainer import BertClassifier
+from .config import model_config
+from .trainer import BertClassifier
 
 
 def main():

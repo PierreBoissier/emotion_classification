@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Data (downloaded by loading_data)
+data/*
+!data/.gitkeep
+
+# Training artifacts (checkpoints are published on the Hugging Face Hub)
+models/*/
+logs/
+runs/
+*.safetensors
+
+.env

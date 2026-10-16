@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-from scripts.inference import BertClassifierInference
-from scripts.config import models_path, id2label
+from emotion_classification.inference import BertClassifierInference
+from emotion_classification.config import models_path, id2label
 
 app = FastAPI()
 

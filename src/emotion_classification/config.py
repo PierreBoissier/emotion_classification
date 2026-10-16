@@ -5,10 +5,6 @@ path = os.getcwd()
 data_path = path + '/data/'
 models_path = path + '/models/'
 
-# On Colab use those paths
-#data_path = path + '/emotion_classification/data/'
-#models_path = path + '/emotion_classification/models/'
-
 # Model's configuration
 model_config = {
     'model_name_or_path': 'sentence-transformers/paraphrase-albert-small-v2',
