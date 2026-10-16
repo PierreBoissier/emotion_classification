@@ -21,8 +21,8 @@ def create_app(checkpoint=None):
     """
     @asynccontextmanager
     async def lifespan(app):
-        path = checkpoint or os.environ.get("EMOTION_CHECKPOINT") or default_checkpoint
-        app.state.inference = BertClassifierInference(path)
+        checkpoint_path = checkpoint or os.environ.get("EMOTION_CHECKPOINT") or default_checkpoint
+        app.state.inference = BertClassifierInference(checkpoint_path)
         yield
 
     app = FastAPI(lifespan=lifespan)

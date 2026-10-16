@@ -41,3 +41,12 @@ def test_a_very_long_text_is_accepted(client):
     response = client.post("/predict", json={"text": "i feel so happy " * 500})
 
     assert response.status_code == 200
+
+
+def test_the_checkpoint_argument_takes_precedence_over_the_environment(trained_checkpoint, monkeypatch):
+    monkeypatch.setenv("EMOTION_CHECKPOINT", "/nonexistent/checkpoint")
+
+    with TestClient(create_app(checkpoint=trained_checkpoint)) as client:
+        response = client.post("/predict", json={"text": "i feel so happy today"})
+
+    assert response.status_code == 200
