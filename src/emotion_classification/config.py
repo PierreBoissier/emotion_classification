@@ -5,6 +5,9 @@ path = os.getcwd()
 data_path = path + '/data/'
 models_path = path + '/models/'
 
+# Checkpoint served by the API when none is configured
+default_checkpoint = os.path.join(models_path, 'paraphrase-albert-small-v2')
+
 # Model's configuration
 model_config = {
     'model_name_or_path': 'sentence-transformers/paraphrase-albert-small-v2',
