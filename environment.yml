@@ -18,6 +18,7 @@ dependencies:
   - pyarrow
   - huggingface_hub
   - fastapi
+  - pydantic
   - uvicorn
   - pytest
   - httpx
