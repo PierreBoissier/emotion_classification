@@ -16,6 +16,9 @@ model_config = {
     'weight_decay': 0.01
 }
 
+# Maximum number of tokens per text, used for truncation in training and inference
+max_length = 256
+
 # Dataset labels description
 id2label = {
     0 : "sadness",

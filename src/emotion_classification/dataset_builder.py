@@ -1,13 +1,15 @@
 from torch.utils.data import Dataset
 
+from .config import max_length
+
 class DatasetBuilder(Dataset):
     """Tokenised texts and Labels of one Split. Texts are not padded: batches are padded by the collator."""
-    def __init__(self, df, tokenizer, max_length=256):
+    def __init__(self, df, tokenizer, max_length=max_length):
         super().__init__()
         self.texts = df['text'].values
         self.labels = df['label'].values
         self.tokenizer = tokenizer
-        self.max_length = max_length     # To be adapted to model
+        self.max_length = max_length
 
     def __len__(self):
         return len(self.texts)

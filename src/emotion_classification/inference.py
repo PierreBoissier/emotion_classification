@@ -1,9 +1,8 @@
 import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
+from .config import max_length
 from .device import select_device
-
-MAX_LENGTH = 256     # Same truncation length as in training
 
 class BertClassifierInference:
     def __init__(self, model_path):
@@ -18,7 +17,7 @@ class BertClassifierInference:
         return model, tokenizer
 
     def _logits(self, text):
-        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=MAX_LENGTH).to(self.device)
+        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=max_length).to(self.device)
         with torch.no_grad():
             return self.model(**inputs).logits
 
