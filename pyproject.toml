@@ -32,3 +32,7 @@ dev = ["pytest", "httpx"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+markers = ["slow: end-to-end tests that train a tiny model (run with `pytest -m slow`)"]
+addopts = "-m 'not slow'"

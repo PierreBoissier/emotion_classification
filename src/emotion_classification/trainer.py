@@ -8,6 +8,7 @@ from transformers import TrainingArguments, Trainer, EarlyStoppingCallback
 
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score, precision_score, recall_score
 from torch.utils.tensorboard import SummaryWriter
+import json
 import shutil
 import time
 from tqdm import tqdm
@@ -16,11 +17,12 @@ import platform
 import os
 import matplotlib.pyplot as plt
 
-from .config import models_path, id2label, label2id
+from .config import models_path, data_path, id2label, label2id
 from .data_loader import create_dataloaders
 
 class BertClassifier:
-    def __init__(self, model_name_or_path, batch_size, mps, load_trained_model):
+    def __init__(self, model_name_or_path, batch_size, mps, load_trained_model,
+                 data_dir=data_path, output_dir=None):
         self.model_name_or_path = model_name_or_path
         self.batch_size = batch_size
         self.mps = mps
@@ -28,7 +30,8 @@ class BertClassifier:
         self.id2label = id2label
         self.label2id = label2id
         self.device = self._set_device()
-        self.save_dir = os.path.join(models_path, os.path.basename(self.model_name_or_path))
+        self.data_dir = data_dir
+        self.save_dir = output_dir or os.path.join(models_path, os.path.basename(self.model_name_or_path))
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
         self.model = self._initialize_model()
 
@@ -69,7 +72,8 @@ class BertClassifier:
                                                                         id2label=self.id2label,
                                                                         label2id=self.label2id).to(self.device)
 
-        train_dataset, val_dataset, _ = create_dataloaders(batch_size=self.batch_size, return_dataset=True, evaluation=False)
+        train_dataset, val_dataset, _ = create_dataloaders(batch_size=self.batch_size, return_dataset=True, evaluation=False,
+                                                              data_dir=self.data_dir, model_name_or_path=self.model_name_or_path)
 
         training_args = TrainingArguments(output_dir=self.save_dir,
                                           learning_rate=lr,
@@ -102,16 +106,18 @@ class BertClassifier:
 
     def train(self, num_epochs=3, lr=2e-5, weight_decay=0.01):
         # Nettoyage des anciens logs
-        if os.path.exists("logs"):
-            shutil.rmtree("logs")
-        writer = SummaryWriter(log_dir="logs")
+        log_dir = os.path.join(self.save_dir, "logs")
+        if os.path.exists(log_dir):
+            shutil.rmtree(log_dir)
+        writer = SummaryWriter(log_dir=log_dir)
 
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name_or_path,
                                                                         num_labels=len(self.id2label),
                                                                         id2label=self.id2label,
                                                                         label2id=self.label2id).to(self.device)
 
-        train_dataloader, val_dataloader, _ = create_dataloaders(batch_size=self.batch_size, return_dataset=False, evaluation=False)
+        train_dataloader, val_dataloader, _ = create_dataloaders(batch_size=self.batch_size, return_dataset=False, evaluation=False,
+                                                                       data_dir=self.data_dir, model_name_or_path=self.model_name_or_path)
 
         optimizer = AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
         total_steps = len(train_dataloader) * num_epochs
@@ -218,7 +224,8 @@ class BertClassifier:
         self.plot_training_curve(train_losses, val_accuracies)
 
     def evaluate(self):
-        _, _, test_dataloader = create_dataloaders(batch_size=self.batch_size, return_dataset=False, evaluation=True)
+        _, _, test_dataloader = create_dataloaders(batch_size=self.batch_size, return_dataset=False, evaluation=True,
+                                                    data_dir=self.data_dir, model_name_or_path=self.model_name_or_path)
         self.model.eval()
         all_preds = []
         all_labels = []
@@ -233,8 +240,40 @@ class BertClassifier:
                 all_preds.extend(preds.cpu().numpy())
                 all_labels.extend(batch["labels"].cpu().numpy())
 
-        print(classification_report(all_labels, all_preds, digits=3, target_names=self.id2label.values()))
-        print(confusion_matrix(all_labels, all_preds, labels=sorted(self.id2label.keys())))
+        label_ids = sorted(self.id2label.keys())
+        emotions = [self.id2label[i] for i in label_ids]
+        print(classification_report(all_labels, all_preds, digits=3, labels=label_ids, target_names=emotions, zero_division=0))
+        matrix = confusion_matrix(all_labels, all_preds, labels=label_ids)
+        print(matrix)
+
+        report = classification_report(all_labels, all_preds, labels=label_ids, target_names=emotions,
+                                       output_dict=True, zero_division=0)
+        metrics = {
+            "accuracy": accuracy_score(all_labels, all_preds),
+            "macro_f1": f1_score(all_labels, all_preds, average="macro"),
+            "per_emotion": {emotion: report[emotion] for emotion in emotions},
+            "confusion_matrix": matrix.tolist(),
+        }
+        os.makedirs(self.save_dir, exist_ok=True)
+        with open(os.path.join(self.save_dir, "metrics.json"), "w") as f:
+            json.dump(metrics, f, indent=2)
+        self.plot_confusion_matrix(matrix, emotions)
+        return metrics
+
+    def plot_confusion_matrix(self, matrix, emotions):
+        fig, ax = plt.subplots(figsize=(6, 5))
+        image = ax.imshow(matrix, cmap="Blues")
+        ax.set_xticks(range(len(emotions)), labels=emotions, rotation=45, ha="right")
+        ax.set_yticks(range(len(emotions)), labels=emotions)
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("True")
+        for i in range(len(emotions)):
+            for j in range(len(emotions)):
+                ax.text(j, i, matrix[i, j], ha="center", va="center")
+        fig.colorbar(image)
+        fig.tight_layout()
+        fig.savefig(os.path.join(self.save_dir, "confusion_matrix.png"))
+        plt.close(fig)
 
     def plot_training_curve(self, train_losses, val_accuracies):
         plt.figure(figsize=(10, 4))
