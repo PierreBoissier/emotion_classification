@@ -32,20 +32,20 @@ def main(config=None, data_dir=data_path, output_dir=None):
     return bert_classifier.evaluate()
 
 
-def evaluate_checkpoint(checkpoint, data_dir=data_path, results_dir=None, config=None):
+def evaluate_checkpoint(checkpoint_dir, data_dir=data_path, results_dir=None, config=None):
     """Evaluate an already trained Checkpoint on the test Split, without training.
 
-    `checkpoint` is a local directory. `metrics.json` and `confusion_matrix.png` are
+    `checkpoint_dir` is a local Checkpoint directory. `metrics.json` and `confusion_matrix.png` are
     written to `results_dir` (default: the Checkpoint directory). Returns the metrics.
     """
     config = {**model_config, **(config or {})}
     bert_classifier = BertClassifier(
-        model_name_or_path=checkpoint,
+        model_name_or_path=checkpoint_dir,
         batch_size=config['batch_size'],
         mps=config['mps'],
         load_trained_model=True,
         data_dir=data_dir,
-        output_dir=checkpoint
+        output_dir=checkpoint_dir
     )
     return bert_classifier.evaluate(results_dir=results_dir)
 

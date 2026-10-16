@@ -6,6 +6,7 @@ import torch
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
 from emotion_classification.config import id2label
+from emotion_classification.evaluate import cli
 from emotion_classification.main import evaluate_checkpoint, main
 
 from .conftest import TINY_CONFIG
@@ -51,3 +52,11 @@ def test_evaluating_a_checkpoint_writes_results_without_modifying_it(
     assert set(metrics["per_emotion"]) == set(id2label.values())
     assert (results_dir / "confusion_matrix.png").stat().st_size > 0
     assert weights.read_bytes() == weights_before
+
+
+def test_evaluate_command_line_writes_results(trained_checkpoint, tiny_data_dir, tmp_path):
+    results_dir = tmp_path / "results"
+
+    cli([trained_checkpoint, "--data-dir", tiny_data_dir, "--results-dir", str(results_dir)])
+
+    assert set(json.loads((results_dir / "metrics.json").read_text())["per_emotion"]) == set(id2label.values())
