@@ -11,8 +11,7 @@ __pycache__/
 data/*
 !data/.gitkeep
 
-# Training artifacts (checkpoints are published on the Hugging Face Hub;
-# the weights already tracked are removed from the repo in ticket #7)
+# Training artifacts (checkpoints are published on the Hugging Face Hub)
 models/*/
 logs/
 runs/

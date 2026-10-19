@@ -56,8 +56,8 @@ The weakest Emotion is surprise (recall 0.636), mostly mistaken for fear. Love i
 
 ## Training
 
-- Data: the `dair-ai/emotion` train (16,000 texts) and validation (2,000 texts) Splits.
-- 10 epochs, learning rate 2e-5, weight decay 0.01, batch size 32 with 4 gradient accumulation steps, AdamW with a linear schedule, mixed precision, on a Colab GPU.
+- Data: the `dair-ai/emotion` train Split (16,000 texts) for training; the validation Split (2,000 texts) is only used to monitor accuracy, not to train or select weights.
+- 10 epochs, learning rate 2e-5, weight decay 0.01, batch size 32 with 4 gradient accumulation steps, AdamW with a linear schedule (5% warmup), mixed precision, on a Colab GPU.
 - The weights of the last epoch are kept. Validation accuracy reaches about 0.93 and is flat over the last epochs.
 
 ![Training curves](training_curves.png)

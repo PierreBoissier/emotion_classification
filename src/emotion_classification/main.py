@@ -1,3 +1,5 @@
+import os
+
 from .config import model_config, data_path
 from .trainer import BertClassifier
 
@@ -36,8 +38,11 @@ def evaluate_checkpoint(checkpoint_dir, data_dir=data_path, results_dir=None, co
     """Evaluate an already trained Checkpoint on the test Split, without training.
 
     `checkpoint_dir` is a local Checkpoint directory or a Hugging Face Hub id. `metrics.json` and `confusion_matrix.png` are
-    written to `results_dir` (default: the Checkpoint directory). Returns the metrics.
+    written to `results_dir` (default: the Checkpoint directory, so required for a Hub id). Returns the metrics.
     """
+    if results_dir is None and not os.path.isdir(checkpoint_dir):
+        raise ValueError("results_dir is required when checkpoint_dir is a Hugging Face Hub id, "
+                         "since there is no local Checkpoint directory to write the results to")
     config = {**model_config, **(config or {})}
     bert_classifier = BertClassifier(
         model_name_or_path=checkpoint_dir,

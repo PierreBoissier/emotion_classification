@@ -60,3 +60,8 @@ def test_evaluate_command_line_writes_results(trained_checkpoint, tiny_data_dir,
     cli([trained_checkpoint, "--data-dir", tiny_data_dir, "--results-dir", str(results_dir)])
 
     assert set(json.loads((results_dir / "metrics.json").read_text())["per_emotion"]) == set(id2label.values())
+
+
+def test_evaluating_a_hub_checkpoint_requires_a_results_directory(tiny_data_dir):
+    with pytest.raises(ValueError, match="results_dir"):
+        evaluate_checkpoint("someone/not-a-local-directory", data_dir=tiny_data_dir)
