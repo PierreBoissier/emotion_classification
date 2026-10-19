@@ -8,4 +8,4 @@ tests
 docs
 scripts
 **/__pycache__
-*.egg-info
+**/*.egg-info

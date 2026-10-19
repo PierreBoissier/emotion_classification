@@ -13,13 +13,10 @@ COPY pyproject.toml README.md ./
 COPY src ./src
 RUN pip install .
 
-# Checkpoint served by the API: a Hugging Face Hub id (override with --build-arg or -e EMOTION_CHECKPOINT=...)
-ARG CHECKPOINT=pboissie/paraphrase-albert-small-v2-emotion
-ENV EMOTION_CHECKPOINT=${CHECKPOINT}
-
 USER app
-# Download the Checkpoint at build time so the container starts without waiting for the Hub
-RUN python -c "import os; from huggingface_hub import snapshot_download; snapshot_download(os.environ['EMOTION_CHECKPOINT'])"
+# Download the Checkpoint served by default (config.hub_checkpoint) at build time, so the container
+# starts without waiting for the Hub. Serve another one with -e EMOTION_CHECKPOINT=<Hub id or mounted path>.
+RUN python -c "from huggingface_hub import snapshot_download; from emotion_classification.config import hub_checkpoint; snapshot_download(hub_checkpoint)"
 
 EXPOSE 8000
 CMD ["uvicorn", "emotion_classification.api:app", "--host", "0.0.0.0", "--port", "8000"]
