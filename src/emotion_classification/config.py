@@ -5,8 +5,11 @@ path = os.getcwd()
 data_path = path + '/data/'
 models_path = path + '/models/'
 
-# Checkpoint served by the API when none is configured
+# Where training saves the Checkpoint
 default_checkpoint = os.path.join(models_path, 'paraphrase-albert-small-v2')
+
+# Checkpoint served by the API when none is configured (Hugging Face Hub id)
+hub_checkpoint = 'pboissie/paraphrase-albert-small-v2-emotion'
 
 # Model's configuration
 model_config = {

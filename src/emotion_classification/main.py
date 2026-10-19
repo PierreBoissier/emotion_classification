@@ -35,7 +35,7 @@ def main(config=None, data_dir=data_path, output_dir=None):
 def evaluate_checkpoint(checkpoint_dir, data_dir=data_path, results_dir=None, config=None):
     """Evaluate an already trained Checkpoint on the test Split, without training.
 
-    `checkpoint_dir` is a local Checkpoint directory. `metrics.json` and `confusion_matrix.png` are
+    `checkpoint_dir` is a local Checkpoint directory or a Hugging Face Hub id. `metrics.json` and `confusion_matrix.png` are
     written to `results_dir` (default: the Checkpoint directory). Returns the metrics.
     """
     config = {**model_config, **(config or {})}

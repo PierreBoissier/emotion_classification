@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-from .config import default_checkpoint, id2label
+from .config import hub_checkpoint, id2label
 from .inference import BertClassifierInference
 
 
@@ -16,12 +16,12 @@ def create_app(checkpoint=None):
     """Build the API serving a Checkpoint: a local path or a Hugging Face Hub id.
 
     Without argument, the Checkpoint is read from the EMOTION_CHECKPOINT environment
-    variable, then falls back to the default Checkpoint under `models/`.
+    variable, then falls back to the published Checkpoint on the Hugging Face Hub.
     The model is loaded when the application starts.
     """
     @asynccontextmanager
     async def lifespan(app):
-        checkpoint_path = checkpoint or os.environ.get("EMOTION_CHECKPOINT") or default_checkpoint
+        checkpoint_path = checkpoint or os.environ.get("EMOTION_CHECKPOINT") or hub_checkpoint
         app.state.inference = BertClassifierInference(checkpoint_path)
         yield
 
