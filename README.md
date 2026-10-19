@@ -1,137 +1,134 @@
-# Text Classification with BERT
+# Emotion classification
 
-This project aims to train a text classification model using BERT (Bidirectional Encoder Representations from Transformers) to classify texts into different categories.
+Fine-tuning and serving of a small transformer that tells which of six emotions (sadness, joy, love, anger, fear, surprise) a short English text expresses. It covers the whole path of an NLP project: data exploration, fine-tuning on Colab, evaluation, model publication on the Hugging Face Hub, a REST API and a Docker image.
 
-## Project Structure
+- **Model**: [`pboissie/paraphrase-albert-small-v2-emotion`](https://huggingface.co/pboissie/paraphrase-albert-small-v2-emotion), [`sentence-transformers/paraphrase-albert-small-v2`](https://huggingface.co/sentence-transformers/paraphrase-albert-small-v2) fine-tuned for classification
+- **Data**: [`dair-ai/emotion`](https://huggingface.co/datasets/dair-ai/emotion), 16,000 training, 2,000 validation and 2,000 test texts
+
+## Results
+
+On the 2,000-text test Split: **accuracy 92.1%, macro F1 87.5%**.
+
+| Emotion | Precision | Recall | F1 | Support |
+|---|---|---|---|---|
+| sadness | 0.960 | 0.952 | 0.956 | 581 |
+| joy | 0.937 | 0.948 | 0.943 | 695 |
+| love | 0.813 | 0.792 | 0.803 | 159 |
+| anger | 0.911 | 0.931 | 0.921 | 275 |
+| fear | 0.869 | 0.920 | 0.894 | 224 |
+| surprise | 0.875 | 0.636 | 0.737 | 66 |
+
+![Confusion matrix on the test Split](results/confusion_matrix.png)
+
+Surprise is the weakest Emotion (recall 0.636, mostly mistaken for fear) and love is often mistaken for joy. Both are rare classes. The full numbers are in [`results/metrics.json`](results/metrics.json) and can be reproduced (see [Evaluation](#evaluation)).
+
+## Quick start
+
+### With Docker
+
+```bash
+docker build -t emotion-classification .
+docker run -p 8000:8000 emotion-classification
+```
+
+The image downloads the model from the Hugging Face Hub when it is built (it is about 2.6 GB, as it also installs the training dependencies). Serve another Checkpoint with `-e EMOTION_CHECKPOINT=<Hub id or mounted path>`.
+
+### Without Docker
+
+Python 3.10 or later:
+
+```bash
+git clone https://github.com/PierreBoissier/emotion_classification.git
+cd emotion_classification
+pip install -e .
+uvicorn emotion_classification.api:app
+```
+
+The model is downloaded from the Hub when the API starts. Use `EMOTION_CHECKPOINT=<Hub id or local directory>` to serve another one.
+
+### Using the API
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"text": "i am so happy to see you again today"}'
+# {"prediction":"joy"}
+
+curl -X POST http://127.0.0.1:8000/predict_proba \
+  -H "Content-Type: application/json" \
+  -d '{"text": "i am terrified of what comes next"}'
+# {"probabilities":{"sadness":0.0015,"joy":0.0020,"love":0.0003,"anger":0.0184,"fear":0.9761,"surprise":0.0017}}
+```
+
+Interactive documentation is served at http://127.0.0.1:8000/docs. Texts longer than 256 tokens are truncated.
+
+## Training
+
+Training runs on a GPU in Colab: open [the training notebook](https://colab.research.google.com/github/PierreBoissier/emotion_classification/blob/main/notebooks/train_emotion_classifier_with_colab.ipynb). It clones this repository, installs it, downloads the data, trains, evaluates on the test Split and offers the Checkpoint as a zip.
+
+The same steps locally (slow without a GPU):
+
+```bash
+pip install -e .
+python -m emotion_classification.loading_data   # downloads the data into data/
+python -m emotion_classification.main           # trains, evaluates, saves into models/
+```
+
+Settings are in `src/emotion_classification/config.py`. The final model was trained for 10 epochs (learning rate 2e-5, weight decay 0.01, batch size 32 with 4 gradient accumulation steps, mixed precision). See the [model card](docs/model_card.md) for details.
+
+## Evaluation
+
+Reproduce the results above with the published Checkpoint (needs the data, see above):
+
+```bash
+python -m emotion_classification.evaluate pboissie/paraphrase-albert-small-v2-emotion --results-dir results
+```
+
+It writes `metrics.json` and `confusion_matrix.png` into `results/`. A local Checkpoint directory works too.
+
+## Tests
+
+```bash
+pip install -e ".[dev]"
+pytest              # fast tests: the API and the evaluation, against a tiny model trained once per run
+pytest -m slow      # end-to-end training and evaluation on a tiny model
+```
+
+Tests run offline: they train a tiny randomly initialised model on a few rows.
+
+## Project structure
 
 ```
-emotion_classification/
-│
-├── scripts/
-│   ├── config.py
-│   ├── data_loader.py
-│   ├── loading_data.py
-│   ├── main.py
-│   ├── trainer.py
-│   └── inference.py
-│
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── logs/
-│
-├── models/
-│   └── saved_models/
-│
+├── src/emotion_classification/
+│   ├── config.py           # paths, hyperparameters, Emotion labels, served Checkpoint
+│   ├── loading_data.py     # downloads dair-ai/emotion into data/
+│   ├── dataset_builder.py  # tokenised Dataset of one Split
+│   ├── data_loader.py      # dataloaders with dynamic padding
+│   ├── trainer.py          # training loop and evaluation
+│   ├── main.py             # train + evaluate entry point
+│   ├── evaluate.py         # evaluate a Checkpoint from the command line
+│   ├── inference.py        # prediction from a Checkpoint
+│   ├── api.py              # FastAPI application
+│   └── device.py           # CUDA / MPS / CPU selection
 ├── notebooks/
-│   └── training_notebook.ipynb
-│
-├── README.md
-└── requirements.txt
+│   ├── data_exploration.ipynb                     # class balance, text lengths, frequent n-grams
+│   └── train_emotion_classifier_with_colab.ipynb  # training on Colab
+├── results/                # metrics and confusion matrix of the published Checkpoint
+├── docs/model_card.md      # model card published on the Hugging Face Hub
+├── tests/
+├── Dockerfile
+├── pyproject.toml
+└── environment.yml         # conda environment (not tested)
 ```
 
-## Installation
+## Limitations and future work
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/votre-utilisateur/emotion_classification.git
-   cd emotion_classification
-   ```
-
-2. **Create a virtual environment** (optional but recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
-
-3. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Configuration
-
-Before running the project, make sure to configure the parameters in `scripts/config.py`. Here is an example configuration:
-
-```python
-# scripts/config.py
-data_path = 'data/processed/'
-models_path = 'models/saved_models/'
-model_config = {
-    'model_name_or_path': 'almanach/camembertv2-base',
-    'batch_size': 64,
-    'mps': False,
-    'load_trained_model': False,
-    'num_epochs': 3,
-    'lr': 2e-5,
-    'weight_decay': 0.01
-}
-```
-
-## Running Training
-
-To run training with the provided notebook, follow these steps:
-
-1. **Prepare your data**:
-   - Place your data in the `data/raw/` folder.
-   - Run the data loading script to process it and place it in `data/processed/`.
-
-2. **Run the training notebook**:
-   - Open the notebook `notebooks/training_notebook.ipynb`.
-   - Follow the instructions in the notebook to execute training.
-
-## Files to Modify for Training Execution
-
-- `scripts/config.py`: Configure model parameters and file paths.
-- `scripts/data_loader.py`: Modify data loading functions if necessary.
-- `scripts/loading_data.py`: Adjust data loading as needed.
-- `scripts/main.py`: Main entry point for training.
-- `scripts/trainer.py`: Contains functions to train and evaluate the model.
-
-## Using the API
-
-To use the text classification API, follow these steps:
-
-1. **Start the API**:
-   ```bash
-   uvicorn scripts.deploy:app --reload
-   ```
-
-2. **Send requests to the API**:
-   - Use a tool like `curl` or Postman to send requests to the API.
-   - Example request:
-   ```bash
-   curl -X POST "http://127.0.0.1:8000/predict" -H "Content-Type: application/json" -d '{"text":"Example text to classify"}'
-   ```
-
-## Deployment
-
-To deploy the application, you can use Docker. Here is an example Dockerfile:
-
-```dockerfile
-FROM python:3.8-slim
-
-WORKDIR /app
-COPY . /app
-
-RUN pip install --no-cache-dir -r requirements.txt
-
-EXPOSE 8000
-CMD ["uvicorn", "scripts.deploy:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-1. **Build the Docker image**:
-   ```bash
-   docker build -t emotion-classification .
-   ```
-
-2. **Run the Docker container**:
-   ```bash
-   docker run -p 8000:8000 emotion-classification
-   ```
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request for any improvements or fixes.
+- English only. The dataset is made of tweets labelled from hashtags, so labels are noisy and the model reflects that style of writing.
+- One Emotion per text: mixed or neutral feelings are not modelled.
+- Rare classes (surprise, love) are the weakest.
+- Only one base model was trained. [`all-mpnet-base-v2`](https://huggingface.co/sentence-transformers/all-mpnet-base-v2) and [`all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) are natural candidates to compare against it.
+- Dependencies are not pinned and the Docker image is large; the API does not need the training dependencies.
 
 ## License
+
+[MIT](LICENSE), Pierre Boissier.
